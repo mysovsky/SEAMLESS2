@@ -4,6 +4,8 @@ from smlinp import write_sml_geometry
 from math import sqrt
 
 def single_point(inp,data,basdefn,do_d1e = False, do_d2e = False):
+    qmethods = ['scf', 'rhf', 'uhf', 'rks', 'eom-ccsd']
+    
     methods = inp['methods']
     partition = inp.get('partition','sml')
     print('Single point methods= ', methods, ' partition= ', partition)
@@ -17,14 +19,14 @@ def single_point(inp,data,basdefn,do_d1e = False, do_d2e = False):
             results= sml.periodic_dft(inp,basdefn,[1,2,3],charge = inp.get('charge',0), mult=inp.get('mult',1),do_d1e = do_d1e, do_d2e = do_d2e)
     elif partition in ['qmmm','add']:
         print(methods)
-        if methods[0] in ['scf', 'rhf', 'uhf', 'rks'] and methods[1] == 'mm':
+        if methods[0] in qmethods and methods[1] == 'mm':
             results = sml.additive_QMMM(inp, basdefn, do_d1e = do_d1e, do_d2e = do_d2e)
         else:
             print('PDFT+MM goes here')
             results = sml.additive(inp, basdefn, do_d1e = do_d1e, do_d2e = do_d2e)
     elif partition == 'sml':
         print('sml', methods)
-        if methods[0] in ['scf', 'rhf', 'uhf'] and methods[-1] == 'mm':
+        if methods[0] in qmethods and methods[-1] == 'mm':
             print('sml-qm/mm')
             results =  sml.trisection_MM(inp, basdefn, do_d1e = do_d1e, do_d2e = do_d2e)
         elif methods[2] in ['scf', 'rhf', 'uhf']:

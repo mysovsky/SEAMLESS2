@@ -218,6 +218,7 @@ def fragment_qm( geom,
                  do_ecp    = False,
                  do_d1e    = False,
                  do_d2e    = False,
+                 method    = 'SCF',
                  dft       = None,
                  guess     = None,
                  projector = None,
@@ -257,12 +258,12 @@ def fragment_qm( geom,
     psi4.core.set_global_option('PRINT',0)
 
     if do_d1e:
-        G, wfn = psi4.gradient('SCF', molecule = mol, basis = basdefn, dft_functional = dft,
+        G, wfn = psi4.gradient(method, molecule = mol, basis = basdefn, dft_functional = dft,
                                return_wfn = True, external_potentials = chrg+chrg2)
         E = wfn.energy()
         
     else:
-        E, wfn = psi4.energy('SCF', molecule = mol, basis = basdefn, dft_functional = dft,
+        E, wfn = psi4.energy(method, molecule = mol, basis = basdefn, dft_functional = dft,
                              return_wfn = True, external_potentials = chrg+chrg2)
 
     if mult>1:psi4.core.set_global_option('REFERENCE','RHF')
@@ -437,6 +438,7 @@ def interaction_mm(geom, potentials,
 def trisection_MM(inp, basdefn, do_d1e = False, do_d2e = False):
     geom        = inp['geometry']
     potentials  = inp['mm']
+    methods     = inp['methods']
     projection  = inp.get('projection', False)
     dft         = inp.get('dft', None)
     frag_charge = inp.get('charge',[0,0,0])
@@ -460,11 +462,13 @@ def trisection_MM(inp, basdefn, do_d1e = False, do_d2e = False):
     else:
         fragdefn = {2:True}
         proj = None
-            
+    mtd = methods[0]
+    if not mtd in ['SCF','DFT','RKS','UKS','RHF','UHF']:
+        dft = None
     res2q = fragment_qm(geom, fragdefn, basdefn,
                         chargdefn = [3,4],frozen = [4],
                         do_d1e = do_d1e, do_d2e = do_d2e,
-                        projector = proj,
+                        projector = proj, method = mtd,
                         dft = dft, charge  = charge2, mult = frag_mult[1] )
     wfn2 = res2q[1]
     if do_d1e:
