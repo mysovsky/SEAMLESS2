@@ -266,12 +266,12 @@ def fragment_qm( geom,
         E, wfn = psi4.energy(method, molecule = mol, basis = basdefn, dft_functional = dft,
                              return_wfn = True, external_potentials = chrg+chrg2)
 
-    if mult>1:psi4.core.set_global_option('REFERENCE','RHF')
+    if mult>1:psi4.core.set_global_option('REFERENCE','UHF')
     #    psi4.core.set_global_option('PRINT',1)
     psi4.oeprop(wfn,'MULLIKEN_CHARGES')
 
-    chrg_field  = qpp.coulomb_point_charges_d(chrg)
-    chrg2_field  = qpp.coulomb_point_charges_d(chrg2)
+    chrg_field  = qpp.coulomb_point_charges(chrg)
+    chrg2_field  = qpp.coulomb_point_charges(chrg2)
 
     DE = 0.5*chrg_field.interaction_energy(chrg_field) +\
         chrg_field.interaction_energy(chrg2_field) 
@@ -303,7 +303,7 @@ def fragment_qm( geom,
             for i in range(len(ptext)):
                 efield_ext[i] *= -chrg2[i][0]
             
-            chrg2_active = qpp.coulomb_point_charges_d([cext[a] for a in cext if a in atactive])
+            chrg2_active = qpp.coulomb_point_charges([cext[a] for a in cext if a in atactive])
             efield_ext += chrg2_active.interaction_gradients(chrg_field)
 
             i = 0
@@ -331,7 +331,7 @@ def fragment_coulomb( geom,
                      ):
     shell_model = (geom.core_shells!=[])
     r1=xgeom2mmcharges(geom, active_regions, return_dict = True, core_shell=shell_model)
-    print(r1)
+    #print(r1)
     if shell_model:
         active_chrg, active_cs = r1
     else:
@@ -342,9 +342,9 @@ def fragment_coulomb( geom,
     else:
        all_chrg  = xgeom2mmcharges(geom, field_regions,  return_dict = True, core_shell=shell_model)
        all_cs = []
-    active_fld = qpp.coulomb_point_charges_d([active_chrg[a] for a in active_chrg], active_cs)
+    active_fld = qpp.coulomb_point_charges([active_chrg[a] for a in active_chrg], active_cs)
     active_fld.too_close = too_close
-    all_fld  = qpp.coulomb_point_charges_d([all_chrg[a] for a in all_chrg], all_cs)
+    all_fld  = qpp.coulomb_point_charges([all_chrg[a] for a in all_chrg], all_cs)
     
     E = active_fld.interaction_energy(all_fld)
     if shell_model:
@@ -353,7 +353,7 @@ def fragment_coulomb( geom,
         isect_chrg  = xgeom2mmcharges(geom, [r for r in active_regions if r in field_regions], core_shell=shell_model)
         isect_cs = []
         
-    isect_fld = qpp.coulomb_point_charges_d(isect_chrg, isect_cs)
+    isect_fld = qpp.coulomb_point_charges(isect_chrg, isect_cs)
     isect_fld.too_close = too_close
 
     E -= .5*isect_fld.interaction_energy(isect_fld)
@@ -376,7 +376,7 @@ def fragment_mm( geom,
                  do_d1e    = False,
                  do_d2e    = False
                 ):        
-    mm_calc = qpp.mm_calculator_d()
+    mm_calc = qpp.mm_calculator()
     for p in potentials:
         mm_calc.add_potential(p)
     if field_regions==[]:
@@ -403,7 +403,7 @@ def interaction_mm(geom, potentials,
                    regions1, regions2,
                    do_d1e    = False,
                    do_d2e    = False):
-    mm_calc = qpp.mm_calculator_d()
+    mm_calc = qpp.mm_calculator()
     for p in potentials:
         mm_calc.add_potential(p)
     mm_calc.set_active_regions(regions1)    
@@ -463,7 +463,7 @@ def trisection_MM(inp, basdefn, do_d1e = False, do_d2e = False):
         fragdefn = {2:True}
         proj = None
     mtd = methods[0]
-    if not mtd in ['SCF','DFT','RKS','UKS','RHF','UHF']:
+    if not mtd in ['SCF','DFT','RKS','UKS','RHF','UHF', 'HF']:
         dft = None
     res2q = fragment_qm(geom, fragdefn, basdefn,
                         chargdefn = [3,4],frozen = [4],
@@ -499,7 +499,7 @@ def trisection_MM(inp, basdefn, do_d1e = False, do_d2e = False):
 
 def additive_QMMM(inp, basdefn, do_d1e = False, do_d2e = False):
     g          = inp['geometry']
-    geom = qpp.xgeometry('double',qpp.periodic_cell_d(0),atom='str',
+    geom = qpp.xgeometry('double',qpp.periodic_cell(0),atom='str',
                       x='r', y='r', z='r', reg1 = 'i', reg2 = 'i', qmm1 = 'r', qmm2 = 'r',
                       q1 = 'r', q2 = 'r', lbl1 = 'str', lbl2 = 'str')                                            
     geom.__setattr__('reg',[r.copy() for r in g.reg])

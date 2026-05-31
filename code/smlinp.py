@@ -36,7 +36,7 @@ def inpvalue(s):
     if len(tlist)>1:
         vlist = [inpvalue(t) for t in tlist]
         return tuple(vlist)
-    print('inpvalue',s)
+#    print('inpvalue',s)
     value = s.split()[0]
     try:
         value = int(s)
@@ -317,13 +317,7 @@ def write_sml_geometry(f,g):
 # -------------------------------------------------------
 
 def read_sml_geometry(f):
-    g = qpp.xgeometry('double',qpp.periodic_cell_d(0),atom='str',
-                      x='r', y='r', z='r', reg1 = 'i', reg2 = 'i', qmm1 = 'r', qmm2 = 'r',
-                      q1 = 'r', q2 = 'r', lbl1 = 'str', lbl2 = 'str')
-    g.reg = []
-    g.q   = []
-    g.qmm = []
-    g.lbl = []
+    g = qpp.xgeometry(0, reg = 'l(i)', qmm = 'l(r)', q = 'l(r)', lbl='l(s)')  
     while True:
         line = f.readline()
         if not line or line.split()==[]:
@@ -386,11 +380,11 @@ def read_sml_geometry(f):
             q = [q1, q2]
             lbl = [lbl1, lbl2]
             
-        g.add([atom, x, y, z, reg1, reg2, qmm1, qmm2, q1, q2, lbl1, lbl2])
-        g.reg.append(reg)
-        g.qmm.append(qmm)
-        g.q.append(q)
-        g.lbl.append(lbl)
+        g.add([atom, x, y, z, reg, qmm, q, lbl])
+        #g.reg.append(reg)
+        #g.qmm.append(qmm)
+        #g.q.append(q)
+        #g.lbl.append(lbl)
     return g
         
 # -------------------------------------------------------

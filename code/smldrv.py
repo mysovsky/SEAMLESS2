@@ -4,7 +4,7 @@ from smlinp import write_sml_geometry
 from math import sqrt
 
 def single_point(inp,data,basdefn,do_d1e = False, do_d2e = False):
-    qmethods = ['scf', 'rhf', 'uhf', 'rks', 'eom-ccsd']
+    qmethods = ['hf', 'scf', 'rhf', 'uhf', 'rks', 'eom-ccsd']
     
     methods = inp['methods']
     partition = inp.get('partition','sml')
@@ -29,7 +29,7 @@ def single_point(inp,data,basdefn,do_d1e = False, do_d2e = False):
         if methods[0] in qmethods and methods[-1] == 'mm':
             print('sml-qm/mm')
             results =  sml.trisection_MM(inp, basdefn, do_d1e = do_d1e, do_d2e = do_d2e)
-        elif methods[2] in ['scf', 'rhf', 'uhf']:
+        elif methods[2] in ['scf', 'rhf', 'uhf', 'hf']:
             results =  sml.trisection_QM(inp, basdefn, do_d1e = do_d1e, do_d2e = do_d2e)
     else:
         # more complicated fragmentation patterns
@@ -53,7 +53,7 @@ def single_point(inp,data,basdefn,do_d1e = False, do_d2e = False):
 def nactive_atoms(geom):
     n = 0
     #while geom.reg1[n]!=geom.reg1[-1]:
-    while n<len(geom) and geom.reg1[n]!=4:
+    while n<len(geom) and geom.reg[n][0]!=4:
         n += 1
     return n
      

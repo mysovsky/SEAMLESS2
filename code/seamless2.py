@@ -1,5 +1,5 @@
-#!/home/amysovsky/envr/bin/python3 -i
-#                 #!/usr/bin/python3 -i
+#!/usr/bin/python3 -i
+#  #!/home/amysovsky/envr/bin/python3 -i
 
 import sys
 import numpy as np
@@ -27,6 +27,7 @@ psi4.set_memory(memory)
 
 threads = inp.get('threads',1)
 psi4.core.set_num_threads(threads)
+qpp.globals.ncores = threads
 
 programs = inp.get('programs','psi4')
 
