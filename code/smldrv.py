@@ -3,7 +3,7 @@ from sml import np
 from smlinp import write_sml_geometry
 from math import sqrt
 
-def single_point(inp,data,basdefn,do_d1e = False, do_d2e = False):
+def single_point(inp,data,basdefn,ecpdefn,do_d1e = False, do_d2e = False):
     qmethods = ['hf', 'scf', 'rhf', 'uhf', 'rks', 'eom-ccsd']
     
     methods = inp['methods']
@@ -16,7 +16,7 @@ def single_point(inp,data,basdefn,do_d1e = False, do_d2e = False):
         if mtd== 'mm':
             results = sml.pure_MM(inp, data,do_d1e=do_d1e, do_d2e = do_d2e, mmregs = [1,2,3])
         elif mtd=='pdft':
-            results= sml.periodic_dft(inp,basdefn,[1,2,3],charge = inp.get('charge',0), mult=inp.get('mult',1),do_d1e = do_d1e, do_d2e = do_d2e)
+            results= sml.periodic_dft(inp,data,basdefn,[1,2,3],charge = inp.get('charge',0), mult=inp.get('mult',1),do_d1e = do_d1e, do_d2e = do_d2e)
     elif partition in ['qmmm','add']:
         print(methods)
         if methods[0] in qmethods and methods[1] == 'mm':
@@ -26,11 +26,11 @@ def single_point(inp,data,basdefn,do_d1e = False, do_d2e = False):
             results = sml.additive(inp, basdefn, do_d1e = do_d1e, do_d2e = do_d2e)
     elif partition == 'sml':
         print('sml', methods)
-        if methods[0] in qmethods and methods[-1] == 'mm':
+        if methods[-1] == 'mm':
             print('sml-qm/mm')
-            results =  sml.trisection_MM(inp, basdefn, do_d1e = do_d1e, do_d2e = do_d2e)
+            results =  sml.trisection_MM(inp,data, basdefn, ecpdefn, do_d1e = do_d1e, do_d2e = do_d2e)
         elif methods[2] in ['scf', 'rhf', 'uhf', 'hf']:
-            results =  sml.trisection_QM(inp, basdefn, do_d1e = do_d1e, do_d2e = do_d2e)
+            results =  sml.trisection_QM(inp, basdefn, ecpdefn, do_d1e = do_d1e, do_d2e = do_d2e)
     else:
         # more complicated fragmentation patterns
         pass
@@ -66,7 +66,7 @@ def maxcoord(nparray):
 
 # ---------------------------------------------------------------------------
     
-def energy_to_optimize(coord,history,inp,data,basdefn,alpha,coord0):
+def energy_to_optimize(coord,history,inp,data,basdefn,ecpdefn,alpha,coord0):
     geom = inp['geometry']
     n = nactive_atoms(geom)
     x = (1-alpha)*coord0 + alpha*coord
@@ -86,7 +86,7 @@ def energy_to_optimize(coord,history,inp,data,basdefn,alpha,coord0):
         print('{:6} {:12.7f} {:12.7f} {:12.7f}'.format(geom.atom[i],geom.x[i],geom.y[i],geom.z[i]),file=f)
     f.close()
     print('before single point')
-    FSCF_E, __ =  single_point(inp, data, basdefn, do_d1e = False, do_d2e = False)
+    FSCF_E, __ =  single_point(inp, data, basdefn, ecpdefn, do_d1e = False, do_d2e = False)
     iter = len(history)
     dx=np.copy(x)
     if len(history)>0:
@@ -115,7 +115,7 @@ def energy_to_optimize(coord,history,inp,data,basdefn,alpha,coord0):
 # ---------------------------------------------------------------------------
 
 
-def gradients_to_optimize(coord,history,inp,data,basdefn,alpha,coord0):
+def gradients_to_optimize(coord,history,inp,data,basdefn,ecpdefn,alpha,coord0):
     geom = inp['geometry']
     n = nactive_atoms(geom)
     x = (1-alpha)*coord0 + alpha*coord
@@ -131,7 +131,7 @@ def gradients_to_optimize(coord,history,inp,data,basdefn,alpha,coord0):
 
     #print('PZL GRD REQ', file = f)
     
-    FSCF_E, FSCF_G, __ = single_point(inp, data, basdefn, do_d1e = True, do_d2e = False)
+    FSCF_E, FSCF_G, __ = single_point(inp, data, basdefn, ecpdefn, do_d1e = True, do_d2e = False)
 
     maxg = max([maxcoord(FSCF_G[a]) for a in range(n)])
     normg = sqrt(sum([FSCF_G[a].dot(FSCF_G[a]) for a in range(n)]))

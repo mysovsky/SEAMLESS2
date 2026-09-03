@@ -193,7 +193,7 @@ def xgeom2mol(geom, regions = [], return_dict = False, return_chrg = False, retu
         
     moldict = {'geom':coord, 'elez':elez, 'elbl':elbl, 'real':not_ghost, 'fix_com':True,
                'fix_orientation':True, 'units':'angstrom'}
-    
+    moldict['provenance']={'creator': 'SEAMLESS', 'routine': 'sml.xgeom2mol', 'version': '0.1'}
     if return_dict:
         mol = [moldict]
     else:        
@@ -210,9 +210,12 @@ def xgeom2mol(geom, regions = [], return_dict = False, return_chrg = False, retu
 # -----------------------------------------------------------------------
 # Calculate part of molecule by SCF in electrostatic field of another part
 
-def fragment_qm( geom,
+def fragment_qm( inp,
+                 data,
+                 geom,
                  fragdefn,
                  basdefn,
+                 ecpdefn,
                  chargdefn = [],
                  frozen    = [],
                  do_ecp    = False,
@@ -223,11 +226,17 @@ def fragment_qm( geom,
                  guess     = None,
                  projector = None,
                  charge    = 0,
+                 ecpcharge = 0,
                  mult      = 1
                 ):
+
+    for i in range(100):
+        print(i,geom[i],xgeom2lbl(geom,i,fragdefn))
     if not isinstance(fragdefn, dict):
         fragdefn = {r:True for r in fragdefn}
     mol, cmol, atmol = xgeom2mol(geom,fragdefn, return_chrg=True, return_atoms = True)
+    mol.print_out()
+    print(cmol, atmol)
     atactive = [i for i in range(geom.nat()) if [r for r in geom.reg[i] if r in frozen]==[] ]
 
     ghost_charge  = sum([cmol[a][0] for a in cmol])
@@ -434,42 +443,62 @@ def interaction_mm(geom, potentials,
         return E - E1
 
 # ---------------------------------------------------------------------
-    
-def trisection_MM(inp, basdefn, do_d1e = False, do_d2e = False):
+import smlorca
+
+def trisection_MM(inp, data, basdefn, ecpdefn, do_d1e = False, do_d2e = False):
+    # create copy of geometry
+    g = qpp.xgeometry(0, reg = 'l(i)', qmm = 'l(r)', q = 'l(r)', lbl='l(s)')
     geom        = inp['geometry']
+    for x in geom: g.add(x)
+    g.cell = geom.cell
+    g.core_shells = geom.core_shells
+    geom = g
+    frag_qm = fragment_qm
+    qmprog = inp.get('qm_program','psi4')
+    if qmprog=='orca':
+        frag_qm=smlorca.fragment_orca
     potentials  = inp['mm']
     methods     = inp['methods']
     projection  = inp.get('projection', False)
     dft         = inp.get('dft', None)
     frag_charge = inp.get('charge',[0,0,0])
     frag_mult   = inp.get('mult', [1,1,1])
-
+   
     res13m = interaction_mm(geom, potentials, [1],[3], do_d1e = do_d1e, do_d2e = do_d2e)
     res23m = fragment_mm(geom, potentials, [2,3],field_regions=[2,3,4],do_d1e = do_d1e, do_d2e = do_d2e)
     res23c = fragment_coulomb( geom, [2,3], [2,3,4], do_d1e = do_d1e, do_d2e = do_d2e, too_close = 5e-1)
     
-    charge12 = frag_charge[0] + frag_charge[1]
-    res12q  = fragment_qm(geom, {1:True, 2:True}, basdefn,
-                          chargdefn = [3,4],frozen = [4],
-                          do_d1e = do_d1e, do_d2e = do_d2e,
-                          dft = dft, charge  = charge12, mult = frag_mult[0]*frag_mult[1] )
+    mtd = methods[0]
+    if qmprog=='orca':
+        mtd = smlorca.orca_automethod(inp,0)
+    ecpcharge = data['ecpcharge']
+
+    charge12 = frag_charge[0] + frag_charge[1] + ecpcharge
+    res12q  = frag_qm(inp, data,geom, {1:True, 2:True}, basdefn, ecpdefn,
+                      chargdefn = [3,4],frozen = [4],method = mtd,
+                      do_d1e = do_d1e, do_d2e = do_d2e,
+                      dft = dft, charge  = charge12, ecpcharge = ecpcharge,
+                      mult = frag_mult[0]*frag_mult[1] )
     wfn12 = res12q[1]
 
-    charge2 = frag_charge[1]
+    charge2 = frag_charge[1] + ecpcharge
     if projection:
         fragdefn = {1:False, 2:True}
         proj = 1 # todo
     else:
         fragdefn = {2:True}
         proj = None
-    mtd = methods[0]
+    mtd = methods[1]
+    if qmprog=='orca':
+        mtd = smlorca.orca_automethod(inp,1)
     if not mtd in ['SCF','DFT','RKS','UKS','RHF','UHF', 'HF']:
-        dft = None
-    res2q = fragment_qm(geom, fragdefn, basdefn,
-                        chargdefn = [3,4],frozen = [4],
-                        do_d1e = do_d1e, do_d2e = do_d2e,
-                        projector = proj, method = mtd,
-                        dft = dft, charge  = charge2, mult = frag_mult[1] )
+        dft = None    
+    res2q = frag_qm(inp, data, geom, fragdefn, basdefn, ecpdefn,
+                    chargdefn = [3,4],frozen = [4],
+                    do_d1e = do_d1e, do_d2e = do_d2e,
+                    projector = proj, method = mtd,
+                    dft = dft, charge  = charge2, ecpcharge = ecpcharge,
+                    mult = frag_mult[1] )
     wfn2 = res2q[1]
     if do_d1e:
         E13m, G13m = res13m
@@ -780,3 +809,43 @@ def zfe_add(inp, data):
     return A*tanh(kx*x)+Ub, bohr2angstroms*(F0/cosh(kx*x)**2+Gb)
 #    return A*tanh(kx*x), bohr2angstroms*F0/cosh(kx*x)**2
 
+
+
+def assign_ecps(inp,data):
+    geom = inp['geometry']
+    reg3ecp = []
+    reg12 = [ i for i in range(geom.nat()) if common_elems(geom.reg[i],[1,2]) and '_cor' not in geom.atom[i] ]
+    reg3 =  [ i for i in range(geom.nat()) if 3 in geom.reg[i] ]
+    ecprad = inp.get('ecprad', 0e0)
+    ecp_types = []
+    ecps=[]
+    ecp_charges = []
+    ecpcharge = 0e0
+    if ecprad > 1e-6:
+        dist32 = [min([(geom.pos(i) - geom.pos(j)).norm() for j in reg12]) for i in reg3]
+        reg3ecp = [reg3[i] for i in range(len(reg3)) if dist32[i] < ecprad]
+        #ecp_names = [k for k in inp['ecp']]
+        #ecp_elements = [strip_atom(k).lower() for k in ecp_names]
+        for i in reg3ecp:
+            if '_shl' in geom.atom[i].lower():
+                continue
+            ecp_type = None
+            elem = lbl2symbol(geom.atom[i]).lower()
+            for k in inp['ecp']:
+                if  elem == lbl2symbol(k).lower():
+                    ecp_type = k
+                    break
+            if ecp_type:
+                ecps.append(i)
+                ecp_types.append(ecp_type)
+                z_core = int(inp['ecp'][ecp_type][0].split()[2])
+                ecp_charges.append(psi4.qcel.periodictable.to_atomic_number(elem) - z_core)
+                ecpcharge+= ecp_charges[-1]
+    for i in ecps:
+        geom.field[0,i]=[2]
+    for i in range(100): print(i, geom[i], xgeom2lbl(geom,i,[1,2]))
+    data['reg3ecps'] = ecps
+    data['ecpcharge']=ecpcharge
+    data['ecp_types'] = ecp_types
+    data['ecpcharges'] = ecp_charges
+    

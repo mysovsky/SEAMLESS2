@@ -29,11 +29,12 @@ threads = inp.get('threads',1)
 psi4.core.set_num_threads(threads)
 qpp.globals.ncores = threads
 
-programs = inp.get('programs','psi4')
+qm_prog = inp.get('qm_program','psi4')
 
 basdefn = inp['basis']
 ecpdefn = inp.get('ecp',{})
-if programs == 'psi4' or programs[0] == 'psi4':
+print([k for k in ecpdefn], ecpdefn)
+if qm_prog == 'psi4':
     if isinstance(basdefn, dict):
         basdefn = sml.reg_custom_basis(basdefn,ecpdefn)
 
@@ -47,10 +48,11 @@ runtype = inp.get('runtype','energy')
 if runtype == 'check':
     pass
 elif runtype in ['energy','gradients','genzfe']:
+    sml.assign_ecps(inp,data)
     
     do_d1e = (runtype in ['gradients', 'genzfe'])
     
-    results = single_point(inp, data, basdefn, do_d1e = do_d1e, do_d2e = False)
+    results = single_point(inp, data, basdefn, ecpdefn, do_d1e = do_d1e, do_d2e = False)
 
     if do_d1e:
         FSCF_E = results[0]
@@ -74,6 +76,7 @@ elif runtype in ['energy','gradients','genzfe']:
         f.close()
 
 elif runtype == 'numgrad':
+    sml.assign_ecps(inp,data)
     numgrad = inp.get('numgrad',{})
     step  = numgrad.get('step',0.01)
     atoms = numgrad.get('atoms',list(range(n)))
@@ -99,6 +102,7 @@ elif runtype == 'numgrad':
         print(G, ZG)
         
 elif runtype == 'opt':
+    sml.assign_ecps(inp,data)
     opt = inp.get('opt',{})
     alpha    = opt.get('alpha',1)
     gtol     = opt.get('gtol', 5e-4)
@@ -117,11 +121,11 @@ elif runtype == 'opt':
     coord0 = np.copy(coord)
     #initialize history
     history = []
-    energy_to_optimize(coord,history,inp,data,basdefn,alpha,coord0)
+    energy_to_optimize(coord,history,inp,data,basdefn,ecpdefn,alpha,coord0)
     
     while maxbfgs>0:
         xopt = bfgs(energy_to_optimize, coord, fprime=gradients_to_optimize, \
-                    args=(history,inp,data,basdefn,alpha,coord0), gtol=gtol, \
+                    args=(history,inp,data,basdefn,ecpdefn,alpha,coord0), gtol=gtol, \
                     maxiter=maxiter, full_output=1, disp=1, \
                     retall=0, callback=None, maxstep = maxstep, minstep = minstep)
         if xopt.success:

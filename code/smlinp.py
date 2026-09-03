@@ -9,6 +9,7 @@ key_synonims = {'runtype':   ['run','runtyp','runtype'],
                 'partition': ['partition'],
                 'methods':   ['methods'],
                 'programs':  ['prog','progs','soft', 'program', 'programs'],
+                'qm_program':['qm_prog', 'qm_program'],
                 'periodic_dft_program':['periodic_dft_program','pdft_prog','pdft_program'],
                 'x_alpha':   ['x_alpha', 'xhf','hfx']
                 }
@@ -26,6 +27,7 @@ val_synonims = {'runtype':{'gradients':['grad','grd','gradient','grads'],
                 'methods':   {'rhf':['scf','rks','rhf'], 'uhf':['uhf','uks'], 'pdft':['pdft','cp2k'], 'mm':['mm','classic']},
                 'programs':  {'psi4':['psi4'], 'cp2k':['cp2k'], 'gulp':['gulp']},
                 'periodic_dft_program':{'cp2k':['cp2k'], 'vasp':['vasp']},
+                'qm_program':{'psi4':['psi4',''], 'orca':['orca']},
                 'x_alpha' :{}
                 }
 
@@ -256,9 +258,14 @@ def read_sml_basis(f):
         fields = line.split()
         if fields == []:
             continue
+        isECP=False
         if len(fields) > 1:
-            raise SyntaxError('Atomic label expected: '+line)
+            if fields[1].lower()=='ecp':
+                isECP=True
+            else:
+                raise SyntaxError('Atomic label expected: '+line)
         label = fields[0]
+        print('label found',label)
 
         name = None
         spec = []
@@ -277,13 +284,13 @@ def read_sml_basis(f):
             while not '****' in line:
                 line = f.readline()
                 spec.append(line)
-        found = False
+                #isECP = False
         for l in basspec:
             if l.lower() == label.lower():
-                found = True
+                #                isECP = True
                 label = l
                 break
-        if not found:
+        if not isECP:
             if name:
                 basspec[label] = name
             else:
@@ -546,16 +553,16 @@ def read_sml(f):
 
 def write_sml_geometry(f,g):
     for i in range(len(g)):
-        if g.reg2[i] == 0:
-            line = '{:2d} {:6} {:10.5f} {:10.5f} {:10.5f} {:2d} {:7.3f} {:7.3f}'.format(i,g.atom[i],*g.pos(i),g.reg1[i], g.qmm1[i], g.q1[i])
-            if g.lbl1[i] != g.atom[i]:
-                lbl = ' ' + g.lbl1[i]
+        if len(g.reg[i]) == 1:
+            line = '{:2d} {:6} {:10.5f} {:10.5f} {:10.5f} {:2d} {:7.3f} {:7.3f}'.format(i,g.atom[i],*g.pos(i),*g.reg[i], *g.qmm[i], *g.q[i])
+            if g.lbl[i][0] != g.atom[i]:
+                lbl = ' ' + g.lbl[i][0]
             else:
                 lbl = ''
         else:
-            line = '{:2d} {:6} {:10.5f} {:10.5f} {:10.5f} {:>2d},{:<2d} {:>7.3f},{:<7.3f} {:>7.3f},{:<7.3f}'.format(i,g.atom[i],*g.pos(i),g.reg1[i], g.reg2[i], g.qmm1[i], g.qmm2[i], g.q1[i], g.q2[i])
-            if g.lbl1[i] != g.atom[i] or g.lbl2[i] != g.atom[i]:
-                lbl = ' {:>6},{:<6}'.format(g.lbl1[i], g.lbl2[i])
+            line = '{:2d} {:6} {:10.5f} {:10.5f} {:10.5f} {:>2d},{:<2d} {:>7.3f},{:<7.3f} {:>7.3f},{:<7.3f}'.format(i,g.atom[i],*g.pos(i),*g.reg[i], *g.qmm[i], *g.q[i])
+            if g.lbl[i][0] != g.atom[i] or g.lbl[i][1] != g.atom[i]:
+                lbl = ' {:>6},{:<6}'.format(*g.lbl[i])
             else:
                 lbl = ''                
         print(line+lbl,file=f)
