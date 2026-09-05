@@ -39,7 +39,9 @@ if qm_prog == 'psi4':
         basdefn = sml.reg_custom_basis(basdefn,ecpdefn)
 
 geom = inp['geometry']
+print('Find cores and shells')
 geom.core_shells = qpp.find_core_shells(geom, .5)
+print('Find cores and shells finished')
 n = nactive_atoms(geom)
     
 

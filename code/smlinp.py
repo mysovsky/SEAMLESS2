@@ -11,7 +11,8 @@ key_synonims = {'runtype':   ['run','runtyp','runtype'],
                 'programs':  ['prog','progs','soft', 'program', 'programs'],
                 'qm_program':['qm_prog', 'qm_program'],
                 'periodic_dft_program':['periodic_dft_program','pdft_prog','pdft_program'],
-                'x_alpha':   ['x_alpha', 'xhf','hfx']
+                'x_alpha':   ['x_alpha', 'xhf','hfx'],
+                'opt':       ['opt','optim','optmize','optimiation']
                 }
 
 val_synonims = {'runtype':{'gradients':['grad','grd','gradient','grads'],
@@ -28,7 +29,8 @@ val_synonims = {'runtype':{'gradients':['grad','grd','gradient','grads'],
                 'programs':  {'psi4':['psi4'], 'cp2k':['cp2k'], 'gulp':['gulp']},
                 'periodic_dft_program':{'cp2k':['cp2k'], 'vasp':['vasp']},
                 'qm_program':{'psi4':['psi4',''], 'orca':['orca']},
-                'x_alpha' :{}
+                'x_alpha' :{},
+                'opt':     {}
                 }
 
 specials_blocks = ['basis', 'geometry', 'potentials']

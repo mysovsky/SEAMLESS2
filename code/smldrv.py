@@ -14,6 +14,9 @@ def single_point(inp,data,basdefn,ecpdefn,do_d1e = False, do_d2e = False):
         mtd = methods[0] if isinstance(methods,list) else methods 
         print('method for pure=',mtd, methods)
         if mtd== 'mm':
+            geom = inp['geometry']
+            geom.build_types()
+            geom.keep_it_alive = geom.typetable()
             results = sml.pure_MM(inp, data,do_d1e=do_d1e, do_d2e = do_d2e, mmregs = [1,2,3])
         elif mtd=='pdft':
             results= sml.periodic_dft(inp,data,basdefn,[1,2,3],charge = inp.get('charge',0), mult=inp.get('mult',1),do_d1e = do_d1e, do_d2e = do_d2e)
@@ -63,6 +66,33 @@ def maxcoord(nparray):
     a1 = nparray.max()
     a2 = nparray.min()
     return a1 if a1>-a2 else -a2
+
+# ---------------------------------------------------------------------------
+
+def opt_constraints(inp, data, FSCF_G):
+    if 'freeze' not in data:
+        optopt = inp.get('opt',{})
+        frz = {}
+        for k in ['freeze','frozen','constr']:
+            if k in optopt:
+                frz=optopt[k]
+                break
+        data['freeze'] = frz
+    frz = data['freeze']
+    if frz != {}:
+        frzcrd = []
+        for k in frz:
+            if isinstance(k,int):
+                for j in [0,1,2]:
+                    frzcrd.append(3*k+j)
+            elif isinstance(k,str) and k[-1] in ['x','y','z']:
+                j = ['x','y','z'].index(k[-1])
+                i = int(k[:-1])
+                frzcrd.append(3*i+j)
+        for k in frzcrd:
+            i = k//3
+            j = k%3
+            FSCF_G[i][j] = 0e0            
 
 # ---------------------------------------------------------------------------
     
@@ -118,10 +148,14 @@ def energy_to_optimize(coord,history,inp,data,basdefn,ecpdefn,alpha,coord0):
 def gradients_to_optimize(coord,history,inp,data,basdefn,ecpdefn,alpha,coord0):
     geom = inp['geometry']
     n = nactive_atoms(geom)
+    print(coord)
+    print(coord0)
     x = (1-alpha)*coord0 + alpha*coord
+    print(x,alpha)
     k=0
     for i in range(n):
         for j in [0,1,2]:
+            print(i,j,k, x[k],geom.coord[i,j])
             geom.coord[i,j] = x[k]
             k+=1    
     try:
@@ -154,6 +188,8 @@ def gradients_to_optimize(coord,history,inp,data,basdefn,ecpdefn,alpha,coord0):
     for i in range(n):
         print('{:6} {:12.7f} {:12.7f} {:12.7f}'.format(geom.atom[i],*FSCF_G[i]),file=f)
     print('\n',file=f)
+
+    opt_constraints(inp,data,FSCF_G)
 
     f.close()
 

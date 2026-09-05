@@ -843,7 +843,7 @@ def assign_ecps(inp,data):
                 ecpcharge+= ecp_charges[-1]
     for i in ecps:
         geom.field[0,i]=[2]
-    for i in range(100): print(i, geom[i], xgeom2lbl(geom,i,[1,2]))
+    for i in range(min(100,len(geom))): print(i, geom[i], xgeom2lbl(geom,i,[1,2]))
     data['reg3ecps'] = ecps
     data['ecpcharge']=ecpcharge
     data['ecp_types'] = ecp_types

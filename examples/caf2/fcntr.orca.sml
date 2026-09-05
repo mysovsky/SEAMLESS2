@@ -1,16 +1,20 @@
 memory = 6Gb # sdfsdf
-threads = 4
+threads = 6
 # sdfsdf jkjkj
 charge = 1, 12, 0
 mult = 2, 1, 1
 methods = orca_dft, orca_dft, mm
 qm_program=orca
 orca{
-  orca=/home/asm/progs/orca_6_0_0_shared_openmpi416/orca
+  orca=/home/abogdanov/progs/orca_4_2_1_linux_x86-64_openmpi314/orca
+  #/home/asm/progs/orca_6_0_0_shared_openmpi416/orca
   inp=orcsml.inp
   out=orcsml.out
 }
-run = grad
+run = check
+opt{
+  freeze = 0x,0y,0z,2,7
+}
 # sdfsdf
 #projection = yes
 #projection.fock = yes
@@ -25,6 +29,9 @@ c_lyp = 0.81
 orca_dft{
   RKS=true
   6-31G=true
+  scf{
+    Guess=Hueckel
+  }
   method{
     # modified B3LYP functional with 40% HF exchange
     Exchange=X_B88
